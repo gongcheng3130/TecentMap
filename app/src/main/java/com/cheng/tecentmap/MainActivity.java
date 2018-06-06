@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -36,6 +37,9 @@ import com.tencent.tencentmap.mapsdk.maps.model.CircleOptions;
 import com.tencent.tencentmap.mapsdk.maps.model.LatLng;
 import com.tencent.tencentmap.mapsdk.maps.model.Marker;
 import com.tencent.tencentmap.mapsdk.maps.model.MarkerOptions;
+import com.tencent.tencentmap.mapsdk.maps.model.Polyline;
+import com.tencent.tencentmap.mapsdk.maps.model.PolylineOptions;
+
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, TencentLocationListener, SensorEventListener {
@@ -52,9 +56,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TencentLocationManager locationManager;
     private TencentLocationRequest tencentLocationRequest;//定位请求
     private Marker marker, markerTarger;//当前确定位置
+    protected Polyline polyline;//行程路线
     private Circle circle;//当前确定位置
     //定义SensorManager传感器管理实例
     private SensorManager mSensorManager;
+    protected long SensorChangedTimeCount = System.currentTimeMillis();//控制改变频率
+    protected double rorate = 0;//当前旋转角度
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +73,54 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);//取得SensorManager实例
         initLocation(this);
         startLocation();
+    }
+
+    protected void setMarkerTitle(Marker marker, String title){
+        if(title.length()>8){
+            marker.setTitle(title.substring(0, 8) + "...");
+        }else{
+            marker.setTitle(title);
+        }
+        marker.setInfoWindowEnable(true);
+    }
+
+    protected void setMarker(double lat, double lon, View view){
+        if(marker!=null){
+            marker.remove();
+        }
+        marker = tencentMap.addMarker(getMarkerOptions(lat, lon, getViewBitmap(view)));
+    }
+
+    protected void setMarker(double lat, double lon, Bitmap bitmap){
+        if(marker!=null){
+            marker.remove();
+        }
+        marker = tencentMap.addMarker(getMarkerOptions(lat, lon, bitmap));
+    }
+
+    protected void setMarkerTarget(double lat, double lon, View view){
+        if(markerTarger!=null){
+            markerTarger.remove();
+        }
+        markerTarger = tencentMap.addMarker(getMarkerOptions(lat, lon, getViewBitmap(view)));
+    }
+
+    protected void setMarkerTarget(double lat, double lon, Bitmap bitmap){
+        if(markerTarger!=null){
+            markerTarger.remove();
+        }
+        markerTarger = tencentMap.addMarker(getMarkerOptions(lat, lon, bitmap));
+    }
+
+    protected Bitmap getViewBitmap(View addViewContent) {
+        addViewContent.setDrawingCacheEnabled(true);
+        addViewContent.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        addViewContent.layout(0, 0, addViewContent.getMeasuredWidth(), addViewContent.getMeasuredHeight());
+        addViewContent.buildDrawingCache();
+        Bitmap cacheBitmap = addViewContent.getDrawingCache();
+        Bitmap bitmap = Bitmap.createBitmap(cacheBitmap);
+        addViewContent.destroyDrawingCache();
+        return bitmap;
     }
 
     public void initLocation(Context context){
@@ -364,13 +419,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return latLng;
     }
 
-    private MarkerOptions getMarkerOptions(double lat, double lon, int resouce){
+    protected MarkerOptions getMarkerOptions(double lat, double lon, Bitmap bitmap){
         MarkerOptions markerOptions  = new MarkerOptions(new LatLng(lat, lon));
 //        markerOptions.alpha(float);//设置标注的透明度
 //                .anchor(anchorU, anchorV)//设置标注的锚点 anchorU - 取值为[0.0 ~ 1.0] 表示锚点从最左边到最右边的百分比 anchorV - 取值为[0.0 ~ 1.0] 表示锚点从最上边到最下边的百分比
-                markerOptions.clockwise(false);//旋转角度是否沿顺时针方向
-                markerOptions.draggable(false);//设置标注是否可以被拖动
-                markerOptions.flat(false);//设置是不是3D标注，3D标注会随着地图倾斜面倾斜
+        markerOptions.clockwise(false);//旋转角度是否沿顺时针方向
+        markerOptions.draggable(false);//设置标注是否可以被拖动
+        markerOptions.flat(true);//设置是不是3D标注，3D标注会随着地图倾斜面倾斜
+//                .getAlpha()//获取标注的透明度
+//                .getAnchorU()//获取标注的上下的锚点
+//                .getAnchorV()//获取标注的左右的锚点
+//                .getIcon()//获取标注的样式
+//                .getPosition()//获取标注的位置
+//                .getRotation()//获取标注的旋转角度
+//                .getSnippet()//获取标注的InfoWindow(气泡)的内容
+//                .getTag() //获得标注的InfoWindow(气泡)的标题
+//                .getTitle()//设置标注的锚点
+//                .getZIndex()//获取标注的层级关系
+        markerOptions.icon(BitmapDescriptorFactory.fromBitmap(bitmap));
+//                .icon(BitmapDescriptor)//设置标注的样式
+        markerOptions.infoWindowEnable(false);//设置标注是否可以弹出InfoWindow(气泡)
+//                .isAvoidAnnocation()//获取是否避让底图文字
+//                .isClockwise()//获取旋转角度是否沿顺时针方向
+//                .isDraggable()//获取标注是否可以被拖动
+//                .isFlat()//获取标注是否是3D
+//                .isInfoWindowEnable()//获取标注的InfoWindow是否可以弹出气泡
+//                .isVisible()//获得标注是否可见
+//                .position(LatLng)//设置标注的位置
+//                .rotation(float)//设置标注的旋转角度
+//                .snippet(String)//设置标注的InfoWindow(气泡)的内容，如果设置了 TencentMap.setInfoWindowAdapter(com.tencent.tencentmap.mapsdk.maps.TencentMap.InfoWindowAdapter) 则失效
+        markerOptions.title("定位点");//设置标注的InfoWindow(气泡)的标题，如果设置了 TencentMap.setInfoWindowAdapter(com.tencent.tencentmap.mapsdk.maps.TencentMap.InfoWindowAdapter) 则失效
+        markerOptions.visible(true);//设置标注是否可见
+//                .zIndex(float)//设置标注的层级关系
+        return markerOptions;
+    }
+
+    protected MarkerOptions getMarkerOptions(double lat, double lon, int resouce){
+        MarkerOptions markerOptions  = new MarkerOptions(new LatLng(lat, lon));
+//        markerOptions.alpha(float);//设置标注的透明度
+//                .anchor(anchorU, anchorV)//设置标注的锚点 anchorU - 取值为[0.0 ~ 1.0] 表示锚点从最左边到最右边的百分比 anchorV - 取值为[0.0 ~ 1.0] 表示锚点从最上边到最下边的百分比
+        markerOptions.clockwise(false);//旋转角度是否沿顺时针方向
+        markerOptions.draggable(false);//设置标注是否可以被拖动
+        markerOptions.flat(false);//设置是不是3D标注，3D标注会随着地图倾斜面倾斜
 //                .getAlpha()//获取标注的透明度
 //                .getAnchorU()//获取标注的上下的锚点
 //                .getAnchorV()//获取标注的左右的锚点
@@ -397,6 +487,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         markerOptions.visible(true);//设置标注是否可见
 //                .zIndex(float)//设置标注的层级关系
         return markerOptions;
+    }
+
+    protected void setCircleBg(double lat, double lon){
+        if(circle!=null){
+            circle.remove();
+        }
+        circle = tencentMap.addCircle(getCircleOptions(lat, lon));
+    }
+
+    protected void setPolyline(List<LatLng> pol){
+        if(polyline!=null){
+            polyline.remove();
+        }
+        polyline = tencentMap.addPolyline(getPolylineOptions(pol));
+    }
+
+    protected PolylineOptions getPolylineOptions(List<LatLng> pol){
+        PolylineOptions polylineOptions = new PolylineOptions();
+//        polylineOptions.add(LatLng);//增加一个点
+        polylineOptions.addAll(pol);//增加点集合
+        polylineOptions.alpha(0.8f);//设置透明度
+//        polylineOptions.animation(Animation);//执行一个动画
+//        polylineOptions.arrowSpacing(50);//设置方向箭头的间距，单位（px),默认是100px
+//        polylineOptions.arrowTexture(BitmapDescriptorFactory.fromResource(R.mipmap.car_icon_process_poyline_arrow));//设置方向箭头的自定义纹理
+        polylineOptions.arrow(true);//
+//        polylineOptions.borderColor(Color.parseColor("#27b272"));//设置线ARGB的描边颜色：当线是纯色线的时候，设置border的颜色可用此接口
+//        polylineOptions.borderColors(int[]);//设置ARGB线的描边颜色，borderColors的数量应该与 colors(int[], int[])接口中的colors的长度保持一致。
+//        polylineOptions.borderWidth(2f);//设置ARGB线 描边的宽度
+//        polylineOptions.clickable(boolean);//是否可以点击
+        polylineOptions.color(Color.parseColor("#27b272"));//设置线的颜色
+//        polylineOptions.colors(int[] colors, int[] indexes);//设置线的分段颜色
+//        polylineOptions.colorType(PolylineOptions.ColorType);//设置颜色类型
+//        polylineOptions.isRoad();//判断是否为路
+//        polylineOptions.isVisible();//返回PolylineOptions对象的可见性
+        polylineOptions.lineCap(true);//设置路线是否显示半圆端点
+//        设置自定义纹理，自定义的纹理文件必须放在项目的asset目录下 注意：
+//        1、当调用此接口，且LineType不为LINE_TYPE_DOTTEDLINE时，color和colors接口指定的值代表用此接口设置纹理的第几像素行，以绘制纹理线
+//        2、当调用此接口，且LineType设置为LINE_TYPE_DOTTEDLINE时，绘制线时会连续绘制此接口设置的纹理。
+//        3、提供的纹理图片最大高度不能超过16px。
+//        polylineOptions.setColorTexture("car_icon_poyline_white_arrow_up_bg.png");
+//        polylineOptions.setDefaultArrowTexture("car_icon_poyline_white_arrow_right.png");//设置默认的方向箭头图片名称
+        polylineOptions.setLineType(PolylineOptions.LineType.LINE_TYPE_DOTTEDLINE);//设置线的类型，必须LineType里面的一种
+        polylineOptions.visible(true);//设置折线可见性
+        polylineOptions.width(16f);//设置线宽度
+//        polylineOptions.zIndex(int);
+        return polylineOptions;
     }
 
     @Override
@@ -455,9 +591,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.i("111", "name = " + name + " --- status = " + status + " --- desc = " + desc);
     }
 
-    long SensorChangedTimeCount = System.currentTimeMillis();
-    double rorate = 0;
-
     @Override
     public void onSensorChanged(SensorEvent event) {
         // 接受方向感应器的类型 即使频率最慢也是在200ms
@@ -468,7 +601,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 SensorChangedTimeCount = System.currentTimeMillis();
                 rorate = event.values[0];
                 Log.i("111", "rorate = " + rorate);
-                marker.setRotation((float) rorate);
+                if(marker!=null && marker.isVisible()) marker.setRotation((float) rorate);
             }
         }
     }
@@ -492,7 +625,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         markerTarger = tencentMap.addMarker(getMarkerOptions(lat, lon, resouce));
     }
 
-    protected void setCircleBg(double lat, double lon){
+    protected void setCircleBg(float lat, float lon){
         if(circle!=null){
             circle.remove();
         }
